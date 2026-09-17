@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PDF RAG</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <h1>PDF RAG</h1>
+    <span id="status" class="status">connecting…</span>
+  </header>
+
+  <main>
+    <!-- ─────────────────────────────── left: ingestion ─────────────────────── -->
+    <aside>
+      <section>
+        <h2>Documents</h2>
+        <label class="upload" id="dropzone">
+          <input type="file" id="file" accept="application/pdf" hidden>
+          <span id="uploadLabel">Choose a PDF</span>
+        </label>
+        <p class="hint" id="uploadHint">Extract → chunk → embed → store</p>
+        <ul id="documents" class="documents"></ul>
+      </section>
+
+    </aside>
+
+    <!-- ─────────────────────────────── right: chat ──────────────────────────── -->
+    <section class="chat">
+      <div id="messages" class="messages">
+        <div class="empty" id="empty">
+          <p>Upload a PDF, then ask it a question.</p>
+        </div>
+      </div>
+
+      <form id="form" class="composer">
+        <input id="question" placeholder="Ask about the document…" autocomplete="off" required>
+        <button id="send" type="submit">Ask</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>

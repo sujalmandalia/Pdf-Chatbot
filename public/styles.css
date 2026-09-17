@@ -1,0 +1,180 @@
+:root {
+  --bg: #f7f7f5;
+  --panel: #ffffff;
+  --border: #e2e0da;
+  --text: #23211d;
+  --muted: #7c776e;
+  --accent: #3f6f4f;
+  --accent-soft: #eaf1ec;
+  --warn: #9a5b2c;
+  --radius: 8px;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17171a;
+    --panel: #1f1f23;
+    --border: #33333a;
+    --text: #eceae5;
+    --muted: #9b968d;
+    --accent: #7fb894;
+    --accent-soft: #222c26;
+    --warn: #d29a63;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+header h1 { font-size: 15px; margin: 0; letter-spacing: .02em; }
+.status { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+main {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 20px;
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  align-items: start;
+}
+
+@media (max-width: 800px) {
+  main { grid-template-columns: 1fr; }
+}
+
+aside { display: flex; flex-direction: column; gap: 16px; }
+
+section {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+
+h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+/* ─────────────────────────────────────────────────────────── upload ──────── */
+.upload {
+  display: block;
+  padding: 18px 12px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted);
+  transition: border-color .15s, background .15s;
+}
+.upload:hover, .upload.over { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.upload.busy { opacity: .6; pointer-events: none; }
+
+.hint { font-size: 11.5px; color: var(--muted); margin: 8px 0 0; }
+
+.documents { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; }
+.documents li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.documents .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.documents .meta { color: var(--muted); font-variant-numeric: tabular-nums; }
+.documents button {
+  border: 0; background: none; color: var(--muted); cursor: pointer;
+  font-size: 14px; line-height: 1; padding: 2px 4px; border-radius: 4px;
+}
+.documents button:hover { color: var(--warn); background: var(--accent-soft); }
+
+/* ─────────────────────────────────────────────────────────── chat ────────── */
+.chat { display: flex; flex-direction: column; min-height: calc(100vh - 130px); padding: 0; }
+
+.messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 18px; }
+
+.empty { margin: auto; text-align: center; color: var(--muted); font-size: 13px; }
+
+.turn { display: flex; flex-direction: column; gap: 8px; }
+.turn .q { font-weight: 600; }
+
+.answer { white-space: pre-wrap; }
+.answer.refused { color: var(--muted); font-style: italic; }
+
+/* Inline [Page N] citations, highlighted by the renderer so the eye can find
+   them — the whole point of the grounding rules is that they are checkable. */
+.cite {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 0 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sources { display: grid; gap: 6px; }
+.sources summary {
+  font-size: 11.5px; color: var(--muted); cursor: pointer;
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.source {
+  border-left: 2px solid var(--accent);
+  padding: 6px 10px;
+  font-size: 12.5px;
+  background: var(--accent-soft);
+  border-radius: 0 6px 6px 0;
+}
+.source .head {
+  display: flex; gap: 8px; align-items: baseline;
+  color: var(--accent); font-weight: 600; margin-bottom: 3px;
+}
+.source .excerpt { color: var(--muted); white-space: pre-wrap; }
+
+.error { color: var(--warn); font-size: 13px; }
+
+/* ─────────────────────────────────────────────────────────── composer ────── */
+.composer {
+  display: flex; gap: 8px; padding: 12px;
+  border-top: 1px solid var(--border);
+}
+.composer input {
+  flex: 1; padding: 9px 12px; font: inherit;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg); color: var(--text);
+}
+.composer input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.composer button {
+  padding: 9px 18px; font: inherit; font-weight: 600;
+  border: 0; border-radius: 6px; cursor: pointer;
+  background: var(--accent); color: var(--panel);
+}
+.composer button:disabled { opacity: .5; cursor: default; }
+
+.dots::after {
+  content: "";
+  animation: dots 1.2s steps(4, end) infinite;
+}
+@keyframes dots { 0% { content: ""; } 25% { content: "·"; } 50% { content: "··"; } 75% { content: "···"; } }
