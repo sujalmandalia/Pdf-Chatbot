@@ -44,6 +44,39 @@ export function parseQuotaError(error) {
   return { retryAfterMs, quota, perDay };
 }
 
+/**
+ * Turn a Gemini failure into something a person can read.
+ *
+ * The SDK's ApiError message is the provider's JSON body, double-encoded -
+ * shown as-is it reaches the chat window as a wall of escaped braces. Our own
+ * quota errors (thrown by withQuotaRetry) are already readable and pass through.
+ *
+ * @returns {{status:number, message:string, retryable:boolean}}
+ */
+export function describeError(err) {
+  const status = Number(err?.status) || 500;
+  const raw = err?.message ?? "";
+  const fromProvider = err?.name === "ApiError" || raw.trimStart().startsWith("{");
+
+  if (!fromProvider) {
+    return { status, message: raw || "Something went wrong.", retryable: status === 429 && !/daily/i.test(raw) };
+  }
+
+  const known = {
+    429: "The AI model is rate-limited right now. Wait a few seconds and try again.",
+    500: "The AI model hit an internal error. Try again in a moment.",
+    503: "The AI model is busy right now. This is usually temporary - try again in a few seconds.",
+    504: "The AI model took too long to respond. Try again.",
+    400: "The AI model rejected the request.",
+    403: "The AI model refused the request - check the API key and its permissions.",
+  };
+  return {
+    status,
+    message: known[status] ?? "The AI model could not answer right now. Try again shortly.",
+    retryable: [429, 500, 503, 504].includes(status),
+  };
+}
+
 export const isQuotaError = (error) =>
   /\b429\b|RESOURCE_EXHAUSTED|quota/i.test(error?.message ?? "") || error?.status === 429;
 

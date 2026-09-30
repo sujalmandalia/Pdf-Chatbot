@@ -27,6 +27,7 @@ import { Router } from "express";
 import { retrieve } from "../services/retrieval.js";
 import { generateAnswer, streamAnswer } from "../services/generation.js";
 import { httpError } from "../middleware/errorHandler.js";
+import { describeError } from "../services/gemini.js";
 
 export const chatRouter = Router();
 
@@ -178,7 +179,8 @@ chatRouter.post("/chat", async (req, res) => {
     // must NOT be rethrown: errorHandler would try to set a status on a response
     // that is already streaming and crash on ERR_HTTP_HEADERS_SENT.
     console.error("stream failed:", err);
-    sendEvent(res, "error", { error: err.message });
+    const { message, retryable } = describeError(err);
+    sendEvent(res, "error", { error: message, retryable });
     res.end();
   }
 });

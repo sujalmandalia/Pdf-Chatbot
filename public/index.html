@@ -16,12 +16,17 @@
     <!-- ─────────────────────────────── left: ingestion ─────────────────────── -->
     <aside>
       <section>
-        <h2>Documents</h2>
+        <h2>Documents <span class="count" id="docCount"></span></h2>
         <label class="upload" id="dropzone">
           <input type="file" id="file" accept="application/pdf" hidden>
-          <span id="uploadLabel">Choose a PDF</span>
+          <svg class="upload-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path d="M12 16V4m0 0-4 4m4-4 4 4M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"
+                  fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="upload-title" id="uploadLabel">Drop a PDF or <u>browse</u></span>
+          <span class="upload-sub">Extracted, chunked and embedded on upload</span>
         </label>
-        <p class="hint" id="uploadHint">Extract → chunk → embed → store</p>
+        <p class="hint" id="uploadHint" aria-live="polite"></p>
         <ul id="documents" class="documents"></ul>
       </section>
 

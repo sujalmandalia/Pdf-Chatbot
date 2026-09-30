@@ -17,6 +17,7 @@ const el = {
   uploadLabel: $("uploadLabel"),
   uploadHint: $("uploadHint"),
   documents: $("documents"),
+  docCount: $("docCount"),
   messages: $("messages"),
   empty: $("empty"),
   form: $("form"),
@@ -121,6 +122,7 @@ function addTurn(question) {
   scrollDown();
 
   return {
+    turn,
     answer: turn.querySelector(".answer"),
     sourcesSlot: turn.querySelector(".sourcesSlot"),
   };
@@ -153,6 +155,44 @@ function renderSources(slot, { sources, model }) {
   slot.append(details);
 }
 
+/**
+ * Replace the answer area with an error card. A partial answer, if any tokens
+ * arrived before the failure, is kept above the card rather than thrown away.
+ */
+function renderError(view, question, { error, retryable }) {
+  view.answer.querySelector(".dots")?.remove();
+  if (!view.answer.textContent.trim()) view.answer.remove();
+
+  const card = document.createElement("div");
+  card.className = "error-card";
+  card.setAttribute("role", "alert");
+  card.innerHTML = `
+    <svg class="error-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <path d="M12 8v5m0 3.5v.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"
+            fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="error-body">
+      <div class="error-title">Couldn't get an answer</div>
+      <div class="error-text"></div>
+    </div>`;
+  // textContent: the message comes from the server.
+  card.querySelector(".error-text").textContent = error || "Something went wrong.";
+
+  if (retryable !== false) {
+    const retry = document.createElement("button");
+    retry.className = "retry";
+    retry.textContent = "Try again";
+    retry.onclick = () => {
+      view.turn.remove();
+      submit(question);
+    };
+    card.append(retry);
+  }
+
+  view.sourcesSlot.replaceChildren(card);
+  scrollDown();
+}
+
 /* ══════════════════════════════════════════════════════════ chat ══════════ */
 
 async function ask(question) {
@@ -173,8 +213,9 @@ async function ask(question) {
 
     // A 400 or 429 arrives as ordinary JSON, before any stream starts.
     if (!response.ok) {
-      const { error } = await response.json().catch(() => ({ error: response.statusText }));
-      view.answer.innerHTML = `<span class="error">${error}</span>`;
+      const data = await response.json().catch(() => ({ error: response.statusText }));
+      // 400 is a bad question, not a transient failure - retrying won't help.
+      renderError(view, question, { retryable: response.status !== 400, ...data });
       return;
     }
 
@@ -189,8 +230,6 @@ async function ask(question) {
 
       // Last, necessarily: `grounded` is only knowable once the answer is
       // complete, and the first token left long before that.
-      // Last, necessarily: `grounded` is only knowable once the answer is
-      // complete, and the first token left long before that.
       sources: (s) => {
         view.answer.classList.toggle("refused", s.grounded === false);
         renderSources(view.sourcesSlot, s);
@@ -199,25 +238,28 @@ async function ask(question) {
 
       // Mid-stream failure. The HTTP status was already 200, so this is the only
       // channel left for an error.
-      error: (e) => {
-        view.answer.insertAdjacentHTML("beforeend", `<span class="error"> — ${e.error}</span>`);
-      },
+      error: (e) => renderError(view, question, e),
     });
   } catch (err) {
-    view.answer.innerHTML = `<span class="error">${err.message}</span>`;
+    // fetch itself failed: the server is down or the network dropped.
+    renderError(view, question, { error: "Couldn't reach the server. Check that it's running and try again." });
   }
 }
 
-el.form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const question = el.question.value.trim();
-  if (!question) return;
-
-  el.question.value = "";
+async function submit(question) {
+  if (el.send.disabled) return;   // one question in flight at a time, retries included
   el.send.disabled = true;
   await ask(question);
   el.send.disabled = false;
   el.question.focus();
+}
+
+el.form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const question = el.question.value.trim();
+  if (!question) return;
+  el.question.value = "";
+  submit(question);
 });
 
 /* ══════════════════════════════════════════════════════════ documents ═════ */
@@ -225,14 +267,24 @@ el.form.addEventListener("submit", async (event) => {
 async function loadDocuments() {
   const { documents } = await fetch("/documents").then((r) => r.json());
   el.documents.innerHTML = "";
+  el.docCount.textContent = documents.length || "";
 
   for (const doc of documents) {
     const li = document.createElement("li");
     li.innerHTML = `
-      <span class="name"></span>
-      <span class="meta">${doc.page_count}p · ${doc.chunk_count} chunks</span>
-      <button title="Delete">×</button>`;
+      <span class="doc-icon" aria-hidden="true">PDF</span>
+      <div class="doc-body">
+        <span class="name"></span>
+        <span class="meta">${doc.page_count} pages · ${doc.chunk_count} chunks</span>
+      </div>
+      <button class="delete" aria-label="Delete document" title="Delete">
+        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+          <path d="M4 7h16M10 11v6m4-6v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"
+                fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>`;
     li.querySelector(".name").textContent = doc.filename;
+    li.title = doc.filename;
     li.querySelector("button").onclick = async () => {
       // Deleting means re-embedding to get it back, so this one gets a confirm.
       if (!confirm(`Delete ${doc.filename}? Re-uploading will cost embedding quota again.`)) return;
@@ -244,10 +296,17 @@ async function loadDocuments() {
   }
 }
 
+/** Upload result line. textContent, not innerHTML: error text comes from the server. */
+function setHint(kind, text) {
+  el.uploadHint.className = `hint ${kind}`;
+  el.uploadHint.textContent = text;
+}
+
 async function upload(file) {
   el.dropzone.classList.add("busy");
   el.uploadLabel.textContent = file.name;
-  el.uploadHint.textContent = "extracting, chunking, embedding…";
+  el.uploadHint.className = "hint working";
+  el.uploadHint.textContent = "Extracting, chunking, embedding…";
 
   const form = new FormData();
   form.append("file", file);
@@ -257,20 +316,20 @@ async function upload(file) {
     const data = await res.json();
 
     if (!res.ok) {
-      el.uploadHint.innerHTML = `<span class="error">${data.error}</span>`;
+      setHint("error", data.error);
     } else if (data.alreadyIngested) {
-      el.uploadHint.textContent = "already ingested — nothing re-embedded";
+      setHint("info", "Already uploaded — nothing re-embedded");
     } else {
       const i = data.ingestion;
-      el.uploadHint.textContent = `${i.pageCount} pages → ${i.chunkCount} chunks → embedded in ${i.embedMs}ms`;
+      setHint("ok", `${i.pageCount} pages · ${i.chunkCount} chunks · embedded in ${(i.embedMs / 1000).toFixed(1)}s`);
     }
     loadDocuments();
     refreshStatus();
   } catch (err) {
-    el.uploadHint.innerHTML = `<span class="error">${err.message}</span>`;
+    setHint("error", err.message);
   } finally {
     el.dropzone.classList.remove("busy");
-    el.uploadLabel.textContent = "Choose a PDF";
+    el.uploadLabel.innerHTML = "Drop a PDF or <u>browse</u>";
     el.file.value = "";
   }
 }

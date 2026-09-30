@@ -1,3 +1,5 @@
+import { describeError } from "../services/gemini.js";
+
 /**
  * Central error handling.
  *
@@ -20,8 +22,13 @@ export function errorHandler(err, req, res, next) {
   if (status >= 500) console.error(err);           // real bugs get a stack trace
   else console.warn(`${status} ${req.method} ${req.originalUrl} - ${err.message}`);
 
+  // Provider errors carry the raw Gemini JSON as their message; translate them.
+  // Everything else keeps its own message (validation errors are written for the client).
+  const provider = err.name === "ApiError" ? describeError(err) : null;
+
   res.status(status).json({
-    error: err.message || "Internal Server Error",
+    error: provider?.message ?? (err.message || "Internal Server Error"),
+    ...(provider ? { retryable: provider.retryable } : {}),
     ...(err.details ? { details: err.details } : {}),
   });
 }
